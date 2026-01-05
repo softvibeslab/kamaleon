@@ -1,0 +1,194 @@
+# ════════════════════════════════════════════════════════════════
+#                    MoAI-ADK Configuration
+#                    Project: Kamaleon
+# ════════════════════════════════════════════════════════════════
+
+project:
+  name: "kamaleon"
+  type: "monorepo"
+  description: "Plataforma SDUI para movilidad empresarial - Server-Driven UI & Offline-First Architecture"
+  version: "1.0.0"
+
+# ══════════════════ COMPONENTS ══════════════════
+components:
+  # Dashboard
+  - name: "dashboard-frontend"
+    path: "dashboard/frontend"
+    type: "react"
+    language: "typescript"
+    agent: "@dashboard-fe-lead"
+    specs_prefix: "SPEC-DASH-F"
+
+  - name: "dashboard-backend"
+    path: "dashboard/backend"
+    type: "nestjs"
+    language: "typescript"
+    agent: "@dashboard-be-lead"
+    specs_prefix: "SPEC-DASH-B"
+
+  # Gateway / Middleware
+  - name: "gateway"
+    path: "services/gateway"
+    type: "express"
+    language: "typescript"
+    agent: "@gateway-lead"
+    specs_prefix: "SPEC-GW"
+
+  # Cerebro IA
+  - name: "guardian-ia"
+    path: "services/guardian"
+    type: "python"
+    language: "python"
+    agent: "@kamaleon-guardian"
+    specs_prefix: "SPEC-AI"
+
+  - name: "automation"
+    path: "services/automation"
+    type: "n8n"
+    agent: "@kamaleon-automation"
+    specs_prefix: "SPEC-AUTO"
+
+  # Mobile App
+  - name: "mobile-app"
+    path: "app/android"
+    type: "kotlin-app"
+    language: "kotlin"
+    framework: "jetpack-compose"
+    agent: "@app-fe-lead"
+    specs_prefix: "SPEC-APP-F"
+
+  - name: "sync-engine"
+    path: "services/sync"
+    type: "kotlin"
+    language: "kotlin"
+    agent: "@kamaleon-sync"
+    specs_prefix: "SPEC-SYNC"
+
+# ══════════════════ QUALITY GATES ══════════════════
+quality_gates:
+  global:
+    coverage:
+      minimum: 80
+      fail_under: true
+    lint:
+      fail_on_error: true
+    security:
+      sast: true
+      dependency_scan: true
+
+  per_component:
+    dashboard-frontend:
+      coverage: 80
+      lighthouse_score: 90
+      bundle_size_max: "500KB"
+      tools:
+        lint: "eslint"
+        test: "jest"
+        type_check: "tsc"
+
+    dashboard-backend:
+      coverage: 85
+      tools:
+        lint: "eslint"
+        test: "jest"
+        type_check: "tsc"
+
+    mobile-app:
+      coverage: 80
+      frame_rate: 60
+      memory_per_screen: "50MB"
+      tools:
+        lint: "detekt"
+        test: "junit"
+
+    guardian-ia:
+      coverage: 90
+      false_negatives: 0
+      validation_time: "1s"
+      tools:
+        lint: "ruff"
+        test: "pytest"
+        type_check: "mypy"
+
+    sync-engine:
+      coverage: 80
+      data_loss: 0
+      sync_speed: "45MB/s"
+
+# ══════════════════ SPEC FORMAT ══════════════════
+spec_format:
+  syntax: "EARS"
+  patterns:
+    - "Ubiquitous"
+    - "Event-driven"
+    - "State-driven"
+    - "Unwanted"
+    - "Optional"
+  template: "default"
+  output_dir: ".moai/specs/"
+
+# ══════════════════ ENVIRONMENTS ══════════════════
+environments:
+  development:
+    url: "http://localhost:3000"
+    auto_deploy: false
+
+  staging:
+    url: "https://staging.kamaleon.example.com"
+    auto_deploy: true
+    trigger: "push to main"
+
+  production:
+    url: "https://kamaleon.example.com"
+    auto_deploy: false
+    requires_approval: true
+    approvers:
+      - "tech-lead"
+      - "qa-lead"
+
+# ══════════════════ CI/CD ══════════════════
+cicd:
+  platform: "github-actions"
+  build_timeout: "10m"
+  test_timeout: "20m"
+
+  pipelines:
+    pr:
+      - lint
+      - type-check
+      - unit-tests
+      - build
+
+    main:
+      - lint
+      - type-check
+      - unit-tests
+      - integration-tests
+      - security-scan
+      - build
+      - deploy-staging
+
+    release:
+      - all-tests
+      - e2e-tests
+      - deploy-production
+
+# ══════════════════ KNOWLEDGE BASE ══════════════════
+knowledge_base:
+  sources:
+    - path: "research/*.pdf"
+      type: "pdf"
+      description: "Technical documentation and analysis"
+
+    - path: "planing/*.md"
+      type: "markdown"
+      description: "SPECs and planning documentation"
+
+  embedding:
+    model: "text-embedding-3-large"
+    chunk_size: 512
+    overlap: 50
+
+  vector_db:
+    type: "local"  # or "pinecone", "qdrant"
+    path: ".moai/knowledge/vectors"

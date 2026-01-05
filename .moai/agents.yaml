@@ -1,0 +1,375 @@
+# ════════════════════════════════════════════════════════════════
+#                    MoAI-ADK Agents Configuration
+#                    Project: Kamaleon
+# ════════════════════════════════════════════════════════════════
+
+mr_alfred:
+  model: "claude-3-opus"
+  description: "Chief Orchestrator - Routes tasks to specialized agents"
+
+# ══════════════════ DEFAULT AGENTS ══════════════════
+default_agents:
+  - "@backend"
+  - "@frontend"
+  - "@mobile"
+  - "@database"
+  - "@security"
+  - "@devops"
+  - "@testing"
+  - "@ai"
+
+# ══════════════════ CUSTOM AGENTS ══════════════════
+custom_agents:
+
+  # ────────────── DASHBOARD FRONTEND ──────────────
+  - name: "@dashboard-fe-lead"
+    tier: 1
+    base: "@frontend"
+    description: "Lead agent for Dashboard Frontend development"
+    context:
+      framework: "React 18 + TypeScript"
+      ui_library: "Material UI v5"
+      state_management: "Zustand"
+    delegates_to:
+      - "@dashboard-ui"
+      - "@dashboard-state"
+      - "@dashboard-api-client"
+    context_files:
+      - "dashboard/frontend/**/*"
+
+  - name: "@dashboard-ui"
+    tier: 2
+    base: "@ui"
+    description: "UI components implementation"
+
+  - name: "@dashboard-state"
+    tier: 2
+    base: "@frontend"
+    description: "State management with Zustand"
+
+  - name: "@dashboard-api-client"
+    tier: 2
+    base: "@api"
+    description: "API client integration"
+
+  # ────────────── DASHBOARD BACKEND ──────────────
+  - name: "@dashboard-be-lead"
+    tier: 1
+    base: "@backend"
+    description: "Lead agent for Dashboard Backend development"
+    context:
+      framework: "NestJS"
+      database: "PostgreSQL"
+      cache: "Redis"
+    delegates_to:
+      - "@dashboard-api"
+      - "@dashboard-db"
+      - "@dashboard-auth"
+      - "@dashboard-events"
+    context_files:
+      - "dashboard/backend/**/*"
+
+  - name: "@dashboard-api"
+    tier: 2
+    base: "@api"
+    description: "REST/GraphQL endpoints"
+
+  - name: "@dashboard-db"
+    tier: 2
+    base: "@database"
+    description: "Database operations with TypeORM"
+
+  - name: "@dashboard-auth"
+    tier: 2
+    base: "@security"
+    description: "Authentication and authorization"
+
+  - name: "@dashboard-events"
+    tier: 2
+    base: "@backend"
+    description: "Event system and WebSockets"
+
+  # ────────────── GATEWAY ──────────────
+  - name: "@gateway-lead"
+    tier: 1
+    base: "@backend"
+    description: "Lead agent for API Gateway development"
+    context:
+      technology: "Express / Kong"
+      protocol: "REST + gRPC"
+    delegates_to:
+      - "@gateway-routing"
+      - "@gateway-security"
+      - "@gateway-integration"
+    context_files:
+      - "services/gateway/**/*"
+
+  - name: "@gateway-routing"
+    tier: 2
+    base: "@backend"
+    description: "Routing and load balancing"
+
+  - name: "@gateway-security"
+    tier: 2
+    base: "@security"
+    description: "Gateway security layer"
+
+  - name: "@gateway-integration"
+    tier: 2
+    base: "@backend"
+    description: "External service integrations (RENIEC, SAP)"
+    integrations:
+      - name: "RENIEC"
+        type: "REST"
+        timeout: "2000ms"
+      - name: "SAP"
+        type: "RFC/BAPI"
+        timeout: "5000ms"
+
+  # ────────────── CEREBRO IA ──────────────
+  - name: "@kamaleon-guardian"
+    tier: 1
+    base: "@security"
+    specialization: "sql-validation-rag"
+    description: "SQL Firewall with RAG-based policy validation"
+    context:
+      model: "claude-3-opus"
+      vector_db: "local"
+    delegates_to:
+      - "@guardian-analyzer"
+      - "@guardian-rag"
+      - "@guardian-policy"
+    knowledge_base:
+      - "research/*.pdf"
+      - "planing/*.md"
+    rules:
+      block_patterns:
+        - "DROP TABLE"
+        - "TRUNCATE"
+        - "ALTER TABLE"
+        - "DELETE FROM .* WHERE 1=1"
+      require_approval:
+        - "Access to DEVICE_CUSTOMER"
+        - "Discount > 15%"
+        - "Trigger modifications"
+    context_files:
+      - "services/guardian/**/*"
+
+  - name: "@guardian-analyzer"
+    tier: 2
+    base: "@security"
+    description: "SQL static analysis"
+
+  - name: "@guardian-rag"
+    tier: 2
+    base: "@ai"
+    description: "RAG service for policy context"
+
+  - name: "@guardian-policy"
+    tier: 2
+    base: "@security"
+    description: "Policy rules engine"
+
+  - name: "@kamaleon-automation"
+    tier: 1
+    base: "@devops"
+    description: "n8n workflow orchestration"
+    context:
+      platform: "n8n"
+    delegates_to:
+      - "@automation-workflows"
+      - "@automation-integrations"
+    context_files:
+      - "services/automation/**/*"
+
+  - name: "@kamaleon-assistant"
+    tier: 1
+    base: "@ai"
+    description: "AI-powered support assistant"
+    context:
+      model: "claude-3-sonnet"
+      conversation_memory: 10
+
+  # ────────────── MOBILE APP ──────────────
+  - name: "@app-fe-lead"
+    tier: 1
+    base: "@mobile"
+    description: "Lead agent for Android app development"
+    context:
+      platform: "Android"
+      language: "Kotlin"
+      ui_framework: "Jetpack Compose"
+      min_sdk: 26
+      target_sdk: 34
+    delegates_to:
+      - "@app-sdui"
+      - "@app-forms"
+      - "@app-printing"
+      - "@app-storage"
+    quality_gates:
+      frame_rate: "60fps"
+      memory_per_screen: "50MB"
+      offline_capability: true
+    context_files:
+      - "app/android/**/*"
+
+  - name: "@app-sdui"
+    tier: 2
+    base: "@mobile"
+    description: "Server-Driven UI renderer"
+
+  - name: "@app-forms"
+    tier: 2
+    base: "@mobile"
+    description: "Dynamic forms system"
+
+  - name: "@app-printing"
+    tier: 2
+    base: "@mobile"
+    description: "Thermal printing (ESC/POS)"
+
+  - name: "@app-storage"
+    tier: 2
+    base: "@database"
+    description: "SQLite local storage"
+
+  - name: "@app-calculator"
+    tier: 2
+    base: "@backend"
+    description: "Local price/tax calculation engine"
+
+  # ────────────── SYNC ENGINE ──────────────
+  - name: "@kamaleon-sync"
+    tier: 1
+    base: "@backend"
+    specialization: "offline-first-sync"
+    description: "Differential sync engine"
+    context:
+      local_db: "SQLite + SQLCipher"
+      protocol: "Delta Sync"
+    delegates_to:
+      - "@sync-engine"
+      - "@sync-conflict"
+      - "@sync-queue"
+    sync_priorities:
+      high:
+        tables:
+          - "DEVICE_ORDER"
+          - "DEVICE_ORDERDETAIL"
+        interval: "5m"
+      medium:
+        tables:
+          - "DEVICE_PRODUCT"
+          - "DEVICE_PRODUCT_PRICE"
+        interval: "2h"
+      low:
+        tables:
+          - "DEVICE_CUSTOMER"
+        interval: "24h"
+    context_files:
+      - "services/sync/**/*"
+
+  - name: "@sync-engine"
+    tier: 2
+    base: "@backend"
+    description: "Core sync algorithms"
+
+  - name: "@sync-conflict"
+    tier: 2
+    base: "@backend"
+    description: "Conflict resolution strategies"
+
+  - name: "@sync-queue"
+    tier: 2
+    base: "@backend"
+    description: "Sync queue management"
+
+  # ────────────── CI/CD ──────────────
+  - name: "@cicd-lead"
+    tier: 1
+    base: "@devops"
+    description: "Lead agent for CI/CD pipelines"
+    context:
+      platform: "GitHub Actions"
+      registry: "Docker Hub / GCR"
+      k8s: "GKE"
+    delegates_to:
+      - "@cicd-build"
+      - "@cicd-test"
+      - "@cicd-deploy"
+      - "@cicd-ota"
+    context_files:
+      - ".github/workflows/**/*"
+      - "infrastructure/**/*"
+
+  - name: "@cicd-build"
+    tier: 2
+    base: "@devops"
+    description: "Build and packaging"
+
+  - name: "@cicd-test"
+    tier: 2
+    base: "@testing"
+    description: "Automated testing"
+
+  - name: "@cicd-deploy"
+    tier: 2
+    base: "@devops"
+    description: "Deployment automation"
+
+  - name: "@cicd-ota"
+    tier: 2
+    base: "@mobile"
+    description: "Over-The-Air updates"
+
+# ══════════════════ ROUTING RULES ══════════════════
+routing_rules:
+  # By SPEC prefix
+  - pattern: "SPEC-DASH-F*"
+    agent: "@dashboard-fe-lead"
+
+  - pattern: "SPEC-DASH-B*"
+    agent: "@dashboard-be-lead"
+
+  - pattern: "SPEC-GW-*"
+    agent: "@gateway-lead"
+
+  - pattern: "SPEC-AI-*"
+    agent: "@kamaleon-guardian"
+
+  - pattern: "SPEC-AUTO-*"
+    agent: "@kamaleon-automation"
+
+  - pattern: "SPEC-APP-F*"
+    agent: "@app-fe-lead"
+
+  - pattern: "SPEC-APP-B*"
+    agent: "@app-storage"
+
+  - pattern: "SPEC-SYNC-*"
+    agent: "@kamaleon-sync"
+
+  - pattern: "SPEC-CICD-*"
+    agent: "@cicd-lead"
+
+  # By file pattern
+  - file_pattern: "dashboard/frontend/**"
+    agent: "@dashboard-fe-lead"
+
+  - file_pattern: "dashboard/backend/**"
+    agent: "@dashboard-be-lead"
+
+  - file_pattern: "services/gateway/**"
+    agent: "@gateway-lead"
+
+  - file_pattern: "services/guardian/**"
+    agent: "@kamaleon-guardian"
+
+  - file_pattern: "app/android/**"
+    agent: "@app-fe-lead"
+
+  - file_pattern: "services/sync/**"
+    agent: "@kamaleon-sync"
+
+  - file_pattern: ".github/workflows/**"
+    agent: "@cicd-lead"
