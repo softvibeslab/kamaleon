@@ -106,6 +106,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
         try {
           await authService.logout();
+        } catch {
+          // Ignore logout errors - we'll clear local state anyway
         } finally {
           tokenService.clearTokens();
           set(initialState);

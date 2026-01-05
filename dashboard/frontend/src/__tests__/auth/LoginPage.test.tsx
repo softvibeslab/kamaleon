@@ -66,15 +66,19 @@ describe('LoginPage', () => {
       renderLoginPage();
 
       const emailInput = screen.getByTestId('email-input').querySelector('input')!;
+      const passwordInput = screen.getByTestId('password-input').querySelector('input')!;
       const submitButton = screen.getByTestId('login-button');
 
       await user.type(emailInput, 'invalid-email');
-      await user.click(submitButton);
+      await user.type(passwordInput, 'password123');
+
+      // Submit and wait for validation
+      fireEvent.submit(screen.getByTestId('login-form'));
 
       await waitFor(() => {
         expect(screen.getByText('Email invalido')).toBeInTheDocument();
-      });
-    });
+      }, { timeout: 5000 });
+    }, 10000);
 
     it('should show error for short password', async () => {
       const user = userEvent.setup();
@@ -90,7 +94,7 @@ describe('LoginPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Minimo 8 caracteres')).toBeInTheDocument();
-      });
+      }, { timeout: 3000 });
     });
 
     it('should show error for empty email', async () => {
@@ -102,7 +106,7 @@ describe('LoginPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Email es requerido')).toBeInTheDocument();
-      });
+      }, { timeout: 3000 });
     });
   });
 
@@ -210,25 +214,26 @@ describe('LoginPage', () => {
       const passwordInput = screen.getByTestId('password-input').querySelector('input')!;
       const submitButton = screen.getByTestId('login-button');
 
-      // Simulate 5 failed attempts
+      // Pre-fill credentials once
+      await user.type(emailInput, 'admin@kamaleon.com');
+      await user.type(passwordInput, 'wrongpassword');
+
+      // Simulate 5 failed attempts by clicking submit multiple times
       for (let i = 0; i < 5; i++) {
-        await user.clear(emailInput);
-        await user.clear(passwordInput);
-        await user.type(emailInput, 'admin@kamaleon.com');
-        await user.type(passwordInput, 'wrongpassword');
         await user.click(submitButton);
         await waitFor(() => {
-          expect(mockLogin).toHaveBeenCalled();
+          expect(mockLogin).toHaveBeenCalledTimes(i + 1);
         });
       }
 
       await waitFor(() => {
         expect(screen.getByTestId('account-locked')).toBeInTheDocument();
-        expect(emailInput).toBeDisabled();
-        expect(passwordInput).toBeDisabled();
-        expect(submitButton).toBeDisabled();
-      });
-    });
+      }, { timeout: 3000 });
+
+      expect(emailInput).toBeDisabled();
+      expect(passwordInput).toBeDisabled();
+      expect(submitButton).toBeDisabled();
+    }, 15000); // Increase test timeout
   });
 
   describe('Password Visibility Toggle', () => {

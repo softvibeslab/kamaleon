@@ -32,3 +32,5 @@ secrets/
 
 # Nested project (VPS clone)
 kamaleon/
+dashboard/frontend/node_modules/
+dashboard/frontend/package-lock.json

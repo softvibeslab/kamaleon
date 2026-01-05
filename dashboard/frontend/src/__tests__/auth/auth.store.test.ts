@@ -150,13 +150,22 @@ describe('AuthStore', () => {
     });
 
     it('should clear tokens even if API logout fails', async () => {
+      // Set up some initial state
+      useAuthStore.setState({
+        user: mockUser,
+        tokens: mockTokens,
+        isAuthenticated: true,
+      });
+
       vi.mocked(authService.logout).mockRejectedValue(new Error('Network error'));
       vi.mocked(tokenService.clearTokens).mockImplementation(() => {});
 
+      // logout() has try/finally that always clears tokens
       await useAuthStore.getState().logout();
 
       expect(tokenService.clearTokens).toHaveBeenCalled();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
+      expect(useAuthStore.getState().user).toBeNull();
     });
   });
 
@@ -237,6 +246,12 @@ describe('AuthStore', () => {
     });
 
     it('should attempt refresh if token is expired', async () => {
+      // Set tokens in store state so refreshToken() can access them via get().tokens
+      useAuthStore.setState({
+        tokens: mockTokens,
+        isAuthenticated: false,
+      });
+
       vi.mocked(tokenService.getTokens).mockReturnValue(mockTokens);
       vi.mocked(tokenService.isTokenExpired).mockReturnValue(true);
 
@@ -253,7 +268,7 @@ describe('AuthStore', () => {
 
       await useAuthStore.getState().checkAuth();
 
-      expect(authService.refreshToken).toHaveBeenCalled();
+      expect(authService.refreshToken).toHaveBeenCalledWith(mockTokens.refreshToken);
     });
   });
 
