@@ -32,5 +32,26 @@ secrets/
 
 # Nested project (VPS clone)
 kamaleon/
-dashboard/frontend/node_modules/
-dashboard/frontend/package-lock.json
+
+# Node modules (all projects)
+node_modules/
+**/node_modules/
+package-lock.json
+**/package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Build outputs
+dist/
+.next/
+coverage/
+
+# Prisma
+**/prisma/migrations/
+
+# Expo
+.expo/
+**/.expo/

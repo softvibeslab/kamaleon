@@ -1,0 +1,157 @@
+# ════════════════════════════════════════════════════════════════
+#                    Kamaleon Production Stack
+#                    Docker Compose Configuration
+# ════════════════════════════════════════════════════════════════
+
+version: '3.8'
+
+services:
+  # ────────────────────────────────────────────────────────────────
+  # PostgreSQL Database
+  # ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: kamaleon-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kamaleon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-kamaleon}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kamaleon-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kamaleon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ────────────────────────────────────────────────────────────────
+  # Redis Cache
+  # ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: kamaleon-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - kamaleon-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ────────────────────────────────────────────────────────────────
+  # Dashboard Backend
+  # ────────────────────────────────────────────────────────────────
+  dashboard-backend:
+    build:
+      context: ./dashboard/backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: kamaleon-dashboard-backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kamaleon}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-kamaleon}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - kamaleon-internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ────────────────────────────────────────────────────────────────
+  # API Gateway
+  # ────────────────────────────────────────────────────────────────
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+      target: production
+    container_name: kamaleon-gateway
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      GATEWAY_PORT: 3000
+      DASHBOARD_URL: http://dashboard-backend:3001
+      SYNC_URL: http://dashboard-backend:3001
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://kamaleon.tudominio.com}
+    depends_on:
+      redis:
+        condition: service_healthy
+      dashboard-backend:
+        condition: service_healthy
+    networks:
+      - kamaleon-internal
+      - kamaleon-public
+
+  # ────────────────────────────────────────────────────────────────
+  # Dashboard Frontend (Nginx)
+  # ────────────────────────────────────────────────────────────────
+  dashboard-frontend:
+    build:
+      context: ./dashboard/frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://api.kamaleon.tudominio.com}
+    container_name: kamaleon-dashboard-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+    networks:
+      - kamaleon-public
+
+  # ────────────────────────────────────────────────────────────────
+  # Nginx Reverse Proxy (Optional - for SSL)
+  # ────────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: kamaleon-nginx
+    restart: always
+    ports:
+      - "443:443"
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - certbot_data:/var/www/certbot:ro
+    depends_on:
+      - gateway
+      - dashboard-frontend
+    networks:
+      - kamaleon-public
+    profiles:
+      - ssl
+
+volumes:
+  postgres_data:
+  redis_data:
+  certbot_data:
+
+networks:
+  kamaleon-internal:
+    driver: bridge
+  kamaleon-public:
+    driver: bridge

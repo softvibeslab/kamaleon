@@ -1,0 +1,205 @@
+// ════════════════════════════════════════════════════════════════
+//                    Kamaleon Database Schema
+//                    MVP Ecosistema
+// ════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Tenant Management
+// ─────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id         String       @id @default(uuid())
+  name       String
+  slug       String       @unique
+  status     TenantStatus @default(active)
+  plan       TenantPlan   @default(free)
+  maxDevices Int          @default(10)
+  maxUsers   Int          @default(5)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  users     User[]
+  manifests Manifest[]
+  devices   Device[]
+
+  @@map("tenants")
+}
+
+enum TenantStatus {
+  active
+  trial
+  suspended
+  archived
+}
+
+enum TenantPlan {
+  free
+  starter
+  professional
+  enterprise
+}
+
+// ─────────────────────────────────────────────────────────────────
+// User Management
+// ─────────────────────────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         UserRole   @default(Viewer)
+  tenantId     String
+  avatarUrl    String?
+  isActive     Boolean    @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+  devices      Device[]
+  manifests    Manifest[] @relation("ManifestAuthor")
+  refreshTokens RefreshToken[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+enum UserRole {
+  Admin
+  Developer
+  Viewer
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Manifest Management (SDUI)
+// ─────────────────────────────────────────────────────────────────
+
+model Manifest {
+  id          String         @id @default(uuid())
+  tenantId    String
+  authorId    String
+  name        String
+  version     String         @default("1.0.0")
+  status      ManifestStatus @default(draft)
+  data        Json           // Full manifest JSON
+  description String?
+  tags        String[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  publishedAt DateTime?
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id])
+  author  User   @relation("ManifestAuthor", fields: [authorId], references: [id])
+  versions ManifestVersion[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([status])
+  @@map("manifests")
+}
+
+enum ManifestStatus {
+  draft
+  published
+  archived
+}
+
+model ManifestVersion {
+  id         String   @id @default(uuid())
+  manifestId String
+  version    String
+  data       Json
+  createdAt  DateTime @default(now())
+
+  manifest Manifest @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+
+  @@index([manifestId])
+  @@map("manifest_versions")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Device Management
+// ─────────────────────────────────────────────────────────────────
+
+model Device {
+  id         String       @id @default(uuid())
+  tenantId   String
+  userId     String
+  name       String
+  platform   Platform
+  appVersion String
+  pushToken  String?
+  lastSyncAt DateTime?
+  status     DeviceStatus @default(active)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("devices")
+}
+
+enum Platform {
+  android
+  ios
+}
+
+enum DeviceStatus {
+  active
+  inactive
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Sync Queue
+// ─────────────────────────────────────────────────────────────────
+
+model SyncQueue {
+  id        String     @id @default(uuid())
+  tenantId  String
+  deviceId  String
+  table     String
+  operation String
+  data      Json
+  status    SyncStatus @default(pending)
+  createdAt DateTime   @default(now())
+  processedAt DateTime?
+
+  @@index([tenantId, status])
+  @@index([deviceId])
+  @@map("sync_queue")
+}
+
+enum SyncStatus {
+  pending
+  processing
+  completed
+  failed
+}
